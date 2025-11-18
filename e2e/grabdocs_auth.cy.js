@@ -47,7 +47,7 @@ function login() {
           }
         });
 
-      // ✅ Test is done as soon as we are no longer on a login URL
+      // Test is done as soon as we are no longer on a login URL
       cy.location('pathname', { timeout: 30000 })
         .should('not.match', /login|signin/i);
     }
