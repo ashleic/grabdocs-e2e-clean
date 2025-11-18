@@ -12,7 +12,7 @@ const EMAIL = Cypress.env('EMAIL') || 'YOUR_EMAIL_HERE';
 const PASS  = Cypress.env('PASSWORD') || 'YOUR_PASSWORD_HERE';
 
 /**
- * Helper: perform login flow (with 2FA pause).
+ * Helper: perform login flow (no 2FA).
  */
 function login() {
   // Land on the marketing site
@@ -31,21 +31,23 @@ function login() {
       cy.location('pathname', { timeout: 20000 })
         .should('match', /login|signin/i);
 
-      cy.get('input[type="email"], input[name="email"], input[type="text"]', { timeout: 20000 })
-        .first().clear().type(EMAIL);
+      cy.get(
+        'input[type="email"], input[name="email"], input[type="text"]',
+        { timeout: 20000 }
+      )
+        .first()
+        .clear()
+        .type(EMAIL);
 
-      cy.get('input[type="password"], input[name="password"]', { timeout: 20000 })
-        .first().clear().type(PASS, { log: false });
+      cy.get(
+        'input[type="password"], input[name="password"]',
+        { timeout: 20000 }
+      )
+        .first()
+        .clear()
+        .type(PASS, { log: false });
 
       cy.contains(/Log in|Sign in/i, { timeout: 20000 }).click();
-
-      // 2FA block — Cypress pauses so you can enter the code
-      cy.contains(/Two[- ]?Factor|Verify Code|Authenticator/i, { timeout: 10000 })
-        .then(($twofa) => {
-          if ($twofa.length) {
-            cy.pause(); // enter 2FA code → click ▶ Resume
-          }
-        });
 
       // Success: no longer on login screen
       cy.location('pathname', { timeout: 30000 })
@@ -56,18 +58,17 @@ function login() {
 
 describe('GrabDocs Upload', () => {
   it('uploads a test file from fixtures', () => {
-    // Step 1: log in with 2FA pause
+    // Step 1: log in (no 2FA)
     login();
 
     // Step 2: interact inside the app.grabdocs.com domain
     cy.origin('https://app.grabdocs.com', () => {
-
       // Ensure the file input exists
       cy.get('input[type="file"]', { timeout: 20000 })
         .first()
         .should('exist');
 
-      // ⭐ Your real filename (confirmed by Finder)
+      // Your real filename (confirmed by Finder)
       const fileName = 'test-upload.pdf';
 
       // Upload the file
@@ -81,4 +82,3 @@ describe('GrabDocs Upload', () => {
     });
   });
 });
-
