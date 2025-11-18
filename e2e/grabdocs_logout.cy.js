@@ -1,7 +1,7 @@
 
 Cypress.on('uncaught:exception', (err) => {
   if (/postMessage|Cannot read properties of null/i.test(err.message)) {
-    return false; // don't fail the test for app-side errors
+    return false; 
   }
 });
 
