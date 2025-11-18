@@ -47,7 +47,7 @@ function login() {
 
       cy.contains(/Log in|Sign in/i, { timeout: 20000 }).click();
 
-      // ✅ Confirm we are past the login screen (no 2FA logic)
+      //Confirm we are past the login screen (no 2FA logic)
       cy.location('pathname', { timeout: 30000 })
         .should('not.match', /login|signin/i);
     }
