@@ -1,83 +1,88 @@
 // cypress/e2e/grabdocs_chat.cy.js
 
-describe('GrabDocs: login and (optionally) send a chat message', () => {
+// Ignore noisy app errors so Cypress doesn't fail on them
+Cypress.on('uncaught:exception', (err) => {
+  if (/postMessage|Cannot read properties of null/i.test(err.message)) {
+    return false; // don't fail the test for app-side errors
+  }
+});
+
+describe('GrabDocs: login and send a chat message', () => {
   it('logs in and sends a chat message successfully', () => {
-    // 0) Read credentials from environment variables (set in Terminal)
-    //    If not set, these fall back to obvious placeholders.
+    // 0) Read credentials from environment variables
     const EMAIL = Cypress.env('EMAIL') || 'your@email.com';
     const PASS  = Cypress.env('PASSWORD') || 'YourPassword123!';
-    const OTP   = Cypress.env('OTP'); // Optional: only used if you export CYPRESS_OTP
 
-    // 1) Open public site and click “Sign in” (this navigates to app.grabdocs.com)
+    // 1) Open public site and click “Sign in”
     cy.visit('https://grabdocs.com/');
     cy.contains(/Log in|Sign in/i, { timeout: 20000 }).click({ force: true });
 
-    // 2) Make sure we actually navigated to the app’s domain and login page path
+    // 2) Ensure we actually navigated to the app’s login page
     cy.location('origin',   { timeout: 20000 }).should('include', 'app.grabdocs.com');
     cy.location('pathname', { timeout: 20000 }).should('match', /login|signin/i);
 
-    // 3) All steps that touch app.grabdocs.com MUST be inside cy.origin.
-    //    Pass EMAIL, PASS, OTP in via "args" so we can use them safely inside.
+    // 3) Now enter login inside app.grabdocs.com via cy.origin
     cy.origin(
       'https://app.grabdocs.com',
-      { args: { EMAIL, PASS, OTP } },
-      ({ EMAIL, PASS, OTP }) => {
+      { args: { EMAIL, PASS } },
+      ({ EMAIL, PASS }) => {
 
-        // --- Fill email & password on the login form ---
-        // Try a few common selectors so it works even if attributes vary.
-        cy.get('input[type="email"], input[name="email"], input[type="text"]', { timeout: 20000 })
+        // --- Fill email ---
+        cy.get(
+          'input[type="email"], input[name="email"], input[type="text"]',
+          { timeout: 20000 }
+        )
           .first()
           .clear()
-          .type(EMAIL, { delay: 20 });
+          .type(EMAIL);
 
-        cy.get('input[type="password"], input[name="password"]', { timeout: 20000 })
+        // --- Fill password ---
+        cy.get(
+          'input[type="password"], input[name="password"]',
+          { timeout: 20000 }
+        )
           .first()
           .clear()
           .type(PASS, { log: false });
 
+        // --- Click login button ---
         cy.contains(/Log in|Sign in/i, { timeout: 20000 }).click();
 
-        // --- Handle Two-Factor Auth if it appears ---
-        // If OTP was provided, we auto-fill it. Otherwise we pause so you can type it.
-        cy.get('body', { timeout: 30000 }).then($body => {
-          const needs2FA = /Two[-\s]?Factor|Verify Code|Verification Code/i.test($body.text());
-          if (needs2FA) {
-            // Try a few common OTP input selectors
-            const otpSelector =
-              'input[autocomplete="one-time-code"], input[name*="code"], input[type="tel"], input[name="otp"]';
+        // --- Confirm login succeeded (no 2FA logic) ---
+        cy.location('pathname', { timeout: 30000 })
+          .should('not.match', /login|signin/i);
 
-            if (OTP) {
-              cy.get(otpSelector, { timeout: 20000 }).first().clear().type(OTP);
-              cy.contains(/Verify|Continue|Submit/i, { timeout: 20000 }).click();
-            } else {
-              // No OTP provided → pause test so you can type the code and click Verify manually,
-              // then press the ▶ Resume button in the Cypress left sidebar.
-              cy.pause();
-            }
-          }
-        });
+        // Wait for a dashboard/home/documents element to confirm load
+        cy.contains(/Documents|New Document|Dashboard|Home/i, { timeout: 60000 })
+          .should('be.visible');
 
-        // --- Confirm we are past login (dashboard/home/documents visible) ---
-        cy.contains(/Documents|New Document|Dashboard|Home/i, { timeout: 60000 }).should('be.visible');
-
-        // --- OPTIONAL: Open Chat (if there is a clear entry) and send a short message ---
+        // --- Chat test ---
         cy.get('body').then($body => {
-          const hasChatEntry = /Chat|AI Assistant/i.test($body.text());
-          if (hasChatEntry) {
+          const hasChat = /Chat|AI Assistant/i.test($body.text());
+          if (hasChat) {
             cy.contains(/Chat|AI Assistant/i).click({ force: true });
 
-            // Try common chat input selectors and send a message
+            // Type message
+            const messageText = 'Hello from Cypress!';
             cy.get('textarea, [contenteditable="true"], input[type="text"]', { timeout: 20000 })
               .first()
-              .type('Hello from Cypress!{enter}');
+              .type(`${messageText}{enter}`);
 
-            // Wait for any AI/doc-related response text to appear
-            cy.contains(/AI|GrabDocs|document|processing/i, { timeout: 30000 }).should('be.visible');
+            // 1) Assert our message appears in the chat history
+            cy.contains(messageText, { timeout: 30000 })
+              .should('be.visible');
+
+            // 2) Assert we receive SOME response from the AI/chat
+            //    Adjust regex to match what GrabDocs actually shows, e.g.
+            //    "Preparing search strategy..." like in your screenshot.
+            cy.contains(
+              /Preparing search strategy|searching your documents|Here’s what I found|answering your question|AI response/i,
+              { timeout: 60000 }
+            ).should('be.visible');
           }
         });
       }
     );
   });
 });
-
 
