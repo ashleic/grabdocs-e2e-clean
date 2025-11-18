@@ -12,7 +12,7 @@ const EMAIL = Cypress.env('EMAIL') || 'YOUR_EMAIL_HERE';
 const PASS  = Cypress.env('PASSWORD') || 'YOUR_PASSWORD_HERE';
 
 /**
- * Helper: perform login flow (with 2FA pause).
+ * Helper: perform login flow (no 2FA handling).
  */
 function login() {
   // Land on the marketing site
@@ -30,24 +30,18 @@ function login() {
       cy.location('pathname', { timeout: 20000 }).should('match', /login|signin/i);
 
       cy.get('input[type="email"], input[name="email"], input[type="text"]', { timeout: 20000 })
-        .first().clear().type(EMAIL);
+        .first()
+        .clear()
+        .type(EMAIL);
 
       cy.get('input[type="password"], input[name="password"]', { timeout: 20000 })
-        .first().clear().type(PASS, { log: false });
+        .first()
+        .clear()
+        .type(PASS, { log: false });
 
       cy.contains(/Log in|Sign in/i, { timeout: 20000 }).click();
 
-      // 2FA block: pause so you can enter the code
-      cy.contains(/Two[- ]?Factor|Verify Code|Authenticator/i, { timeout: 10000 })
-        .then(($twofa) => {
-          if ($twofa.length) {
-            // Enter the code in GrabDocs, wait for the app to finish loading,
-            // then click ▶ Resume in Cypress.
-            cy.pause();
-          }
-        });
-
-      // (Optional) quick sanity check that we're no longer on login
+      // Quick sanity check that we're no longer on a login URL
       cy.location('pathname', { timeout: 30000 })
         .should('not.match', /login|signin/i);
     }
@@ -55,19 +49,50 @@ function login() {
 }
 
 describe('GrabDocs Calendar', () => {
-  it('opens the Calendar tab', () => {
-    // Step 1: log in (will pause for 2FA)
+  it('opens the Calendar tab and creates a new event', () => {
+    // Step 1: log in
     login();
 
-    // Step 2: interact on the app.grabdocs.com origin
-    cy.origin('https://app.grabdocs.com', () => {
-      // Click the Calendar tab in the top nav
-      cy.contains(/Calendar/i, { timeout: 20000 })
-        .click({ force: true });
+    // Unique event title so we can assert on it
+    const EVENT_TITLE = `Cypress Test Event ${Date.now()}`;
 
-      // Verify we are on the calendar page
-      cy.location('pathname', { timeout: 20000 })
-        .should('include', 'calendar');
-    });
+    // Step 2: interact on the app.grabdocs.com origin
+    cy.origin(
+      'https://app.grabdocs.com',
+      { args: { EVENT_TITLE } },
+      ({ EVENT_TITLE }) => {
+        // Click the Calendar tab in the top nav
+        cy.contains(/Calendar/i, { timeout: 20000 })
+          .click({ force: true });
+
+        // Verify we are on the calendar page
+        cy.location('pathname', { timeout: 20000 })
+          .should('include', 'calendar');
+
+        // ---- Create a new calendar event ----
+
+        // Click a "new event" style button
+        cy.contains(/New Event|Create Event|Add Event|New Meeting/i, { timeout: 20000 })
+          .click({ force: true });
+
+        // Fill in the event title (try common title inputs)
+        cy.get(
+          'input[name="title"], input[placeholder*="Title"], input[placeholder*="Event name"], input[type="text"]',
+          { timeout: 20000 }
+        )
+          .first()
+          .clear()
+          .type(EVENT_TITLE);
+
+        // Click Save / Create / Done
+        cy.contains(/Save|Create|Done/i, { timeout: 20000 })
+          .click({ force: true });
+
+        // Assert the event appears on the calendar
+        cy.contains(EVENT_TITLE, { timeout: 30000 })
+          .should('be.visible');
+      }
+    );
   });
 });
+
