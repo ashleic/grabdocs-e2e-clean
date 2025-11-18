@@ -9,7 +9,6 @@ const EMAIL = Cypress.env('EMAIL') || 'YOUR_EMAIL_HERE';
 const PASS  = Cypress.env('PASSWORD') || 'YOUR_PASSWORD_HERE';
 
 function login() {
-  // Land on the marketing site
   cy.visit('https://grabdocs.com/');
   cy.contains(/Log in|Sign in/i, { timeout: 20000 }).click({ force: true });
   cy.origin(
@@ -47,10 +46,8 @@ function login() {
 
 describe('GrabDocs Upload', () => {
   it('uploads a test file from fixtures', () => {
-    // Step 1: log in (no 2FA)
     login();
     cy.origin('https://app.grabdocs.com', () => {
-      // Ensure the file input exists
       cy.get('input[type="file"]', { timeout: 20000 })
         .first()
         .should('exist');
