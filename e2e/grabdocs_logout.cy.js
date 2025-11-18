@@ -12,7 +12,7 @@ const EMAIL = Cypress.env('EMAIL') || 'YOUR_EMAIL_HERE';
 const PASS  = Cypress.env('PASSWORD') || 'YOUR_PASSWORD_HERE';
 
 /**
- * Helper: perform login flow (with 2FA pause).
+ * Helper: perform login flow (no 2FA).
  */
 function login() {
   // Land on the marketing site
@@ -29,25 +29,27 @@ function login() {
       cy.location('origin',   { timeout: 20000 }).should('include', 'app.grabdocs.com');
       cy.location('pathname', { timeout: 20000 }).should('match', /login|signin/i);
 
-      cy.get('input[type="email"], input[name="email"], input[type="text"]', { timeout: 20000 })
-        .first().clear().type(EMAIL);
+      cy.get(
+        'input[type="email"], input[name="email"], input[type="text"]',
+        { timeout: 20000 }
+      )
+        .first()
+        .clear()
+        .type(EMAIL);
 
-      cy.get('input[type="password"], input[name="password"]', { timeout: 20000 })
-        .first().clear().type(PASS, { log: false });
+      cy.get(
+        'input[type="password"], input[name="password"]',
+        { timeout: 20000 }
+      )
+        .first()
+        .clear()
+        .type(PASS, { log: false });
 
       cy.contains(/Log in|Sign in/i, { timeout: 20000 }).click();
 
-      // 2FA block: Cypress pauses here so you can enter the code
-      cy.contains(/Two[- ]?Factor|Verify Code|Authenticator/i, { timeout: 10000 })
-        .then(($twofa) => {
-          if ($twofa.length) {
-            // Enter the code in GrabDocs, wait for it to finish loading,
-            // then click ▶ Resume in Cypress.
-            cy.pause();
-          }
-        });
-
-      // no more commands -> after Resume, test will move on to whatever called login()
+      // ✅ Confirm we are past the login screen (no 2FA logic)
+      cy.location('pathname', { timeout: 30000 })
+        .should('not.match', /login|signin/i);
     }
   );
 }
@@ -58,11 +60,15 @@ describe('GrabDocs authentication', () => {
   });
 
   it('logs out successfully', () => {
-    // Step 1: Log in (with 2FA pause)
+    // Step 1: Log in
     login();
 
     // Step 2: Do logout on the app domain
     cy.origin('https://app.grabdocs.com', () => {
+      // Optional: wait for a known post-login element
+      cy.contains(/Documents|New Document|Dashboard|Home/i, { timeout: 60000 })
+        .should('be.visible');
+
       // Open account/user menu
       cy.contains(/Account|Profile|Settings|Menu|User|Avatar/i, { timeout: 20000 })
         .click({ force: true });
@@ -80,3 +86,4 @@ describe('GrabDocs authentication', () => {
     });
   });
 });
+
