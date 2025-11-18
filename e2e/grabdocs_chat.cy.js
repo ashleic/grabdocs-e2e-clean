@@ -1,6 +1,4 @@
-// cypress/e2e/grabdocs_chat.cy.js
 
-// Ignore noisy app errors so Cypress doesn't fail on them
 Cypress.on('uncaught:exception', (err) => {
   if (/postMessage|Cannot read properties of null/i.test(err.message)) {
     return false; // don't fail the test for app-side errors
@@ -9,11 +7,11 @@ Cypress.on('uncaught:exception', (err) => {
 
 describe('GrabDocs: login and send a chat message', () => {
   it('logs in and sends a chat message successfully', () => {
-    // 0) Read credentials from environment variables
+
     const EMAIL = Cypress.env('EMAIL') || 'your@email.com';
     const PASS  = Cypress.env('PASSWORD') || 'YourPassword123!';
 
-    // 1) Open public site and click “Sign in”
+
     cy.visit('https://grabdocs.com/');
     cy.contains(/Log in|Sign in/i, { timeout: 20000 }).click({ force: true });
 
@@ -27,7 +25,6 @@ describe('GrabDocs: login and send a chat message', () => {
       { args: { EMAIL, PASS } },
       ({ EMAIL, PASS }) => {
 
-        // --- Fill email ---
         cy.get(
           'input[type="email"], input[name="email"], input[type="text"]',
           { timeout: 20000 }
@@ -36,7 +33,6 @@ describe('GrabDocs: login and send a chat message', () => {
           .clear()
           .type(EMAIL);
 
-        // --- Fill password ---
         cy.get(
           'input[type="password"], input[name="password"]',
           { timeout: 20000 }
@@ -45,18 +41,16 @@ describe('GrabDocs: login and send a chat message', () => {
           .clear()
           .type(PASS, { log: false });
 
-        // --- Click login button ---
+  
         cy.contains(/Log in|Sign in/i, { timeout: 20000 }).click();
 
         // --- Confirm login succeeded (no 2FA logic) ---
         cy.location('pathname', { timeout: 30000 })
           .should('not.match', /login|signin/i);
 
-        // Wait for a dashboard/home/documents element to confirm load
         cy.contains(/Documents|New Document|Dashboard|Home/i, { timeout: 60000 })
           .should('be.visible');
 
-        // --- Chat test ---
         cy.get('body').then($body => {
           const hasChat = /Chat|AI Assistant/i.test($body.text());
           if (hasChat) {
@@ -68,13 +62,9 @@ describe('GrabDocs: login and send a chat message', () => {
               .first()
               .type(`${messageText}{enter}`);
 
-            // 1) Assert our message appears in the chat history
             cy.contains(messageText, { timeout: 30000 })
               .should('be.visible');
 
-            // 2) Assert we receive SOME response from the AI/chat
-            //    Adjust regex to match what GrabDocs actually shows, e.g.
-            //    "Preparing search strategy..." like in your screenshot.
             cy.contains(
               /Preparing search strategy|searching your documents|Here’s what I found|answering your question|AI response/i,
               { timeout: 60000 }
@@ -85,4 +75,5 @@ describe('GrabDocs: login and send a chat message', () => {
     );
   });
 });
+
 
